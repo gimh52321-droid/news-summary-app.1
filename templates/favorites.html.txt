@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>즐겨찾기</title>
+</head>
+<body>
+
+<h1>⭐ 즐겨찾기한 뉴스</h1>
+<a href="/">← 메인으로 돌아가기</a>
+<hr>
+
+{% if favorites %}
+    {% for news in favorites %}
+        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+            <a href="{{ news.link }}" target="_blank"><b>{{ news.title }}</b></a>
+            <p>{{ news.summary }}</p>
+
+            <form action="/favorite/delete" method="POST">
+                <input type="hidden" name="link" value="{{ news.link }}">
+                <button>❌ 즐겨찾기 제거</button>
+            </form>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>아직 즐겨찾기한 뉴스가 없습니다.</p>
+{% endif %}
+
+</body>
+</html>

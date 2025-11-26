@@ -1,28 +1,157 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>네이버 뉴스 요약</title>
+    <title>뉴스 요약 서비스</title>
+
     <style>
-        body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
-        h1 { text-align: center; }
-        .category { margin: 20px 0; }
-        .article { background: #fff; padding: 15px; margin: 10px 0; border-radius: 8px; }
-        .article a { text-decoration: none; font-weight: bold; color: #333; }
+        body {
+            background: #f4f6f9;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .search-area {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .search-area input {
+            width: 350px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #bbb;
+        }
+
+        .search-area button {
+            padding: 10px 15px;
+            border: none;
+            background: #4e73df;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .category-title {
+            margin-top: 40px;
+            color: #2e59d9;
+            font-size: 22px;
+            border-left: 5px solid #4e73df;
+            padding-left: 10px;
+        }
+
+        .news-card {
+            background: white;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0px 3px 8px rgba(0,0,0,0.1);
+            position: relative;
+            border: 2px solid transparent;
+        }
+
+        /* 즐겨찾기된 카드 */
+        .news-card.favorite {
+            border-color: gold;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+        }
+
+        .favorite-badge {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background: gold;
+            color: white;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .star {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            font-size: 28px;
+            cursor: pointer;
+            color: gray;
+        }
+
+        .star.active {
+            color: gold;
+        }
+
+        .news-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .go-fav {
+            display: block;
+            text-align: center;
+            margin-top: 40px;
+            font-size: 18px;
+        }
+
     </style>
 </head>
 <body>
-    <h1>네이버 뉴스 요약</h1>
-    {% for category, articles in news.items() %}
-        <div class="category">
-            <h2>{{ category }}</h2>
-            {% for article in articles %}
-                <div class="article">
-                    <a href="{{ article.link }}" target="_blank">{{ article.title }}</a><br>
-                    <p>{{ article.summary }}</p>
-                </div>
-            {% endfor %}
+
+<h1>📰 뉴스 요약 서비스</h1>
+
+<div class="search-area">
+    <form action="/" method="get">
+        <input type="text" name="query" value="{{ query }}" placeholder="검색어 입력">
+        <button type="submit">검색</button>
+    </form>
+</div>
+
+
+{% if filtered_news %}
+    <h2 class="category-title">🔍 검색 결과</h2>
+
+    {% for n in filtered_news %}
+        <div class="news-card {% if n.title in favorites %}favorite{% endif %}">
+            
+            {% if n.title in favorites %}
+                <div class="favorite-badge">⭐ Favorite</div>
+                <a href="/unfavorite/{{ n.title }}" class="star active">★</a>
+            {% else %}
+                <a href="/favorite/{{ n.title }}" class="star">☆</a>
+            {% endif %}
+
+            <div class="news-title">{{ n.id }}. <a href="{{ n.link }}" target="_blank">{{ n.title }}</a></div>
+            <p>{{ n.summary }}</p>
         </div>
     {% endfor %}
+{% endif %}
+
+
+{% for cat, articles in news_data.items() %}
+    <h2 class="category-title">{{ cat }}</h2>
+
+    {% for n in articles %}
+        <div class="news-card {% if n.title in favorites %}favorite{% endif %}">
+            
+            {% if n.title in favorites %}
+                <div class="favorite-badge">⭐ Favorite</div>
+                <a href="/unfavorite/{{ n.title }}" class="star active">★</a>
+            {% else %}
+                <a href="/favorite/{{ n.title }}" class="star">☆</a>
+            {% endif %}
+
+            <div class="news-title">{{ n.id }}. <a href="{{ n.link }}" target="_blank">{{ n.title }}</a></div>
+            <p>{{ n.summary }}</p>
+        </div>
+    {% endfor %}
+{% endfor %}
+
+<a href="/favorites" class="go-fav">⭐ 즐겨찾기 모아보기</a>
+
 </body>
 </html>
