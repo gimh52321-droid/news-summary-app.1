@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>단어장</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+    body { font-family: Arial, sans-serif; background:#f4f6f9; margin:0; padding:24px; }
+    .container { max-width:900px; margin:0 auto; }
+    h1 { text-align:center; margin-bottom:18px; }
+    .word-card { background:#fff; padding:14px 16px; border-radius:10px; margin-bottom:12px; box-shadow:0 3px 8px rgba(0,0,0,0.06); border:1px solid #efeef0; position:relative; }
+    .delete { position:absolute; right:12px; top:12px; color:#d33; text-decoration:none; font-weight:bold; cursor:pointer; }
+    .word { font-size:16px; font-weight:700; color:#222; }
+    .meanings { color:#666; font-size:14px; margin-top:8px; }
+    .back { display:block; text-align:center; margin-top:18px; }
+    a.button { display:inline-block; padding:8px 12px; background:#2b6cdf; color:#fff; text-decoration:none; border-radius:8px; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>📘 단어장</h1>
+    {% if wordbook %}
+        {% for w in wordbook %}
+            <div class="word-card">
+                <span class="delete" onclick="deleteWord('{{ w.word }}')">×</span>
+                <div class="word">{{ w.word }}</div>
+                <div class="meanings">{% for m in w.meanings %}{{ m }}<br>{% endfor %}</div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty">단어장이 비어 있습니다.</div>
+    {% endif %}
+    <div class="back">
+        <a class="button" href="/">← 메인으로 돌아가기</a>
+    </div>
+</div>
+
+<script>
+async function deleteWord(word) {
+    await fetch("/delete_word", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({word: word})
+    });
+    location.reload();
+}
+</script>
+</body>
+</html>

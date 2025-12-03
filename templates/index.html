@@ -1,157 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>뉴스 요약 서비스</title>
-
-    <style>
-        body {
-            background: #f4f6f9;
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        .search-area {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .search-area input {
-            width: 350px;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #bbb;
-        }
-
-        .search-area button {
-            padding: 10px 15px;
-            border: none;
-            background: #4e73df;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .category-title {
-            margin-top: 40px;
-            color: #2e59d9;
-            font-size: 22px;
-            border-left: 5px solid #4e73df;
-            padding-left: 10px;
-        }
-
-        .news-card {
-            background: white;
-            margin: 15px 0;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0px 3px 8px rgba(0,0,0,0.1);
-            position: relative;
-            border: 2px solid transparent;
-        }
-
-        /* 즐겨찾기된 카드 */
-        .news-card.favorite {
-            border-color: gold;
-            box-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
-        }
-
-        .favorite-badge {
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            background: gold;
-            color: white;
-            padding: 5px 10px;
-            font-size: 12px;
-            border-radius: 12px;
-            font-weight: bold;
-        }
-
-        .star {
-            position: absolute;
-            right: 15px;
-            top: 15px;
-            font-size: 28px;
-            cursor: pointer;
-            color: gray;
-        }
-
-        .star.active {
-            color: gold;
-        }
-
-        .news-title {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .go-fav {
-            display: block;
-            text-align: center;
-            margin-top: 40px;
-            font-size: 18px;
-        }
-
-    </style>
+<meta charset="utf-8" />
+<title>뉴스 요약 + 단어장</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f9f9f9; }
+.top-menu { margin-bottom:20px; }
+.top-menu a { margin-right:15px; text-decoration:none; color:#2b6cdf; font-weight:bold; }
+.search-box { margin-bottom:20px; }
+.search-box input { padding:6px 10px; margin-right:5px; }
+.search-box button { padding:6px 10px; }
+.meanings-box { margin-bottom:20px; background:#eaf3ff; padding:12px; border-radius:6px; display:none; }
+.news-card { background:white; padding:14px; border-radius:8px; margin-bottom:16px; box-shadow:0 3px 8px rgba(0,0,0,0.08); border-left:5px solid #2b6cdf; position:relative; }
+.news-number { font-weight:bold; margin-bottom:4px; }
+.news-title { font-size:20px; font-weight:bold; margin-bottom:6px; color:#1a1a1a; }
+.news-summary { color:#333; line-height:1.6; margin-bottom:6px; }
+.fav-btn { position:absolute; right:12px; top:12px; cursor:pointer; font-size:18px; color:gold; text-decoration:none; }
+</style>
 </head>
 <body>
 
-<h1>📰 뉴스 요약 서비스</h1>
-
-<div class="search-area">
-    <form action="/" method="get">
-        <input type="text" name="query" value="{{ query }}" placeholder="검색어 입력">
-        <button type="submit">검색</button>
-    </form>
+<div class="top-menu">
+    <a href="/">홈</a>
+    <a href="/favorites">즐겨찾기</a>
+    <a href="/wordbook">단어장</a>
 </div>
 
+<div class="search-box">
+    <input type="text" id="news-search" placeholder="뉴스 검색">
+    <button onclick="searchNews()">검색</button>
+    <br><br>
+    <input type="text" id="word-search" placeholder="단어 검색">
+    <button onclick="searchWord()">뜻 검색 & 단어장 저장</button>
+</div>
 
-{% if filtered_news %}
-    <h2 class="category-title">🔍 검색 결과</h2>
-
-    {% for n in filtered_news %}
-        <div class="news-card {% if n.title in favorites %}favorite{% endif %}">
-            
-            {% if n.title in favorites %}
-                <div class="favorite-badge">⭐ Favorite</div>
-                <a href="/unfavorite/{{ n.title }}" class="star active">★</a>
-            {% else %}
-                <a href="/favorite/{{ n.title }}" class="star">☆</a>
-            {% endif %}
-
-            <div class="news-title">{{ n.id }}. <a href="{{ n.link }}" target="_blank">{{ n.title }}</a></div>
-            <p>{{ n.summary }}</p>
-        </div>
-    {% endfor %}
-{% endif %}
-
+<div id="meanings-box" class="meanings-box"></div>
 
 {% for cat, articles in news_data.items() %}
-    <h2 class="category-title">{{ cat }}</h2>
-
-    {% for n in articles %}
-        <div class="news-card {% if n.title in favorites %}favorite{% endif %}">
-            
-            {% if n.title in favorites %}
-                <div class="favorite-badge">⭐ Favorite</div>
-                <a href="/unfavorite/{{ n.title }}" class="star active">★</a>
-            {% else %}
-                <a href="/favorite/{{ n.title }}" class="star">☆</a>
-            {% endif %}
-
-            <div class="news-title">{{ n.id }}. <a href="{{ n.link }}" target="_blank">{{ n.title }}</a></div>
-            <p>{{ n.summary }}</p>
-        </div>
-    {% endfor %}
+<h2>{{ cat }}</h2>
+{% for a in articles %}
+<div class="news-card">
+    <div class="news-number">{{ a.id }}.</div>
+    {% if a.title in favorites %}
+        <a class="fav-btn" href="/unfavorite/{{ a.title|urlencode }}">★</a>
+    {% else %}
+        <a class="fav-btn" href="/favorite/{{ a.title|urlencode }}">☆</a>
+    {% endif %}
+    <div class="news-title">{{ a.title }}</div>
+    <div class="news-summary">{{ a.summary }}</div>
+    <div><a href="{{ a.link }}" target="_blank">원문 보기</a></div>
+</div>
+{% endfor %}
 {% endfor %}
 
-<a href="/favorites" class="go-fav">⭐ 즐겨찾기 모아보기</a>
+<script>
+function searchNews() {
+    const query = document.getElementById("news-search").value.trim();
+    if(!query) return location.href="/";
+    window.location.href = "/?query=" + encodeURIComponent(query);
+}
 
+let lastFetchedWord = "";
+let lastFetchedMeanings = [];
+
+async function searchWord() {
+    const word = document.getElementById("word-search").value.trim();
+    if(!word) return;
+
+    try {
+        const res = await fetch(`/api/define?word=${encodeURIComponent(word)}`);
+        const data = await res.json();
+        lastFetchedMeanings = data.meanings || ["뜻을 찾을 수 없습니다."];
+        lastFetchedWord = word;
+
+        const box = document.getElementById("meanings-box");
+        box.style.display = "block";
+        box.innerHTML = `<strong>${word}</strong><br>` + lastFetchedMeanings.map((m,i)=>`${i+1}. ${m}`).join("<br>");
+
+        await fetch("/add_word", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({word:lastFetchedWord, meanings:lastFetchedMeanings})
+        });
+    } catch(e){
+        alert("단어 검색 중 오류가 발생했습니다.");
+    }
+}
+</script>
 </body>
 </html>

@@ -1,85 +1,32 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>즐겨찾기</title>
-
-    <style>
-        body {
-            background: #f4f6f9;
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .news-card {
-            background: white;
-            margin: 15px 0;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0px 3px 8px rgba(0,0,0,0.1);
-            position: relative;
-            border: 2px solid gold;
-        }
-
-        .favorite-badge {
-            position: absolute;
-            top: -10px;
-            left: -10px;
-            background: gold;
-            color: white;
-            padding: 5px 10px;
-            font-size: 12px;
-            border-radius: 12px;
-            font-weight: bold;
-        }
-
-        .delete-btn {
-            position: absolute;
-            right: 15px;
-            top: 15px;
-            color: red;
-            font-size: 18px;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .news-title {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
-        .back {
-            display: block;
-            text-align: center;
-            margin-top: 40px;
-            font-size: 18px;
-        }
-    </style>
+<meta charset="utf-8" />
+<title>즐겨찾기 뉴스</title>
+<style>
+body { font-family: Arial, sans-serif; margin:20px; background:#f9f9f9; }
+.news-card { background:#fff; padding:12px; margin-bottom:10px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); position:relative; }
+.unfav { position:absolute; right:12px; top:12px; color:red; cursor:pointer; font-weight:bold; }
+</style>
 </head>
 <body>
-
-<h1>⭐ 즐겨찾기한 뉴스</h1>
-
+<h1>즐겨찾기 뉴스</h1>
 {% if favorites %}
     {% for f in favorites %}
         <div class="news-card">
-            <div class="favorite-badge">즐겨찾기</div>
-            <a href="/unfavorite/{{ f }}" class="delete-btn">×</a>
-
-            <div class="news-title">{{ f }}</div>
-            <p>이 뉴스는 즐겨찾기에 저장된 기사입니다.</p>
+            {{ f }}
+            <span class="unfav" onclick="unfav('{{ f }}')">×</span>
         </div>
     {% endfor %}
 {% else %}
-    <p style="text-align:center; font-size:18px;">즐겨찾기한 뉴스가 없습니다.</p>
+    <p>즐겨찾기한 뉴스가 없습니다.</p>
 {% endif %}
+<a href="/">← 메인으로</a>
 
-<a href="/" class="back">← 메인으로 돌아가기</a>
-
+<script>
+function unfav(title){
+    location.href = "/unfavorite/" + encodeURIComponent(title);
+}
+</script>
 </body>
 </html>

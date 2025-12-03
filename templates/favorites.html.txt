@@ -1,30 +1,91 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>즐겨찾기</title>
+<meta charset="UTF-8">
+<title>단어장</title>
+<style>
+body { font-family: Arial, sans-serif; padding:20px; background:#f7f8fa; }
+h1{text-align:center; margin-bottom:20px;}
+.word-card { background:white; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid #ccc; position:relative; }
+.del-btn { position:absolute; right:10px; top:10px; color:red; cursor:pointer; font-weight:bold; }
+.word-title { font-weight:bold; font-size:16px; margin-bottom:4px; cursor:pointer; color:#0b66ff; text-decoration:underline; }
+.meaning { font-size:14px; color:#555; margin-bottom:2px; }
+a.back{display:block; text-align:center; margin-top:20px;}
+</style>
 </head>
 <body>
-
-<h1>⭐ 즐겨찾기한 뉴스</h1>
-<a href="/">← 메인으로 돌아가기</a>
-<hr>
-
-{% if favorites %}
-    {% for news in favorites %}
-        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-            <a href="{{ news.link }}" target="_blank"><b>{{ news.title }}</b></a>
-            <p>{{ news.summary }}</p>
-
-            <form action="/favorite/delete" method="POST">
-                <input type="hidden" name="link" value="{{ news.link }}">
-                <button>❌ 즐겨찾기 제거</button>
-            </form>
+<h1>📘 단어장</h1>
+{% if wordbook %}
+    {% for w in wordbook %}
+        <div class="word-card" data-word="{{ w.word }}">
+            <span class="word-title" onclick="openPopup('{{ w.word|e }}')">{{ w.word }}</span>
+            <span class="del-btn" onclick="deleteWord('{{ w.word|e }}')">×</span>
+            <div>
+                {% for m in w.meanings %}
+                    <div class="meaning">• {{ m }}</div>
+                {% endfor %}
+            </div>
         </div>
     {% endfor %}
 {% else %}
-    <p>아직 즐겨찾기한 뉴스가 없습니다.</p>
+<p style="text-align:center;">단어장이 비어 있습니다.</p>
 {% endif %}
+<a href="/" class="back">← 메인으로 돌아가기</a>
 
+<!-- 팝업 -->
+<div id="popup" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:420px; max-height:70vh; overflow:auto; background:white; padding:16px; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.2); z-index:9999;">
+<span style="float:right; cursor:pointer; color:#999;" onclick="closePopup()">✕</span>
+<h3 id="popup-word"></h3>
+<div id="popup-meanings"></div>
+<div style="margin-top:12px;">
+<button id="save-word-btn" onclick="">단어장에 저장</button>
+</div>
+</div>
+
+<script>
+let lastFetchedWord="", lastFetchedMeanings=[];
+async function openPopup(word){
+    lastFetchedWord = word;
+    try{
+        const res = await fetch(`/api/define?word=${encodeURIComponent(word)}`);
+        const data = await res.json();
+        lastFetchedMeanings = data.meanings || ["뜻을 찾을 수 없습니다."];
+        document.getElementById("popup-word").innerText = word;
+        const container = document.getElementById("popup-meanings");
+        container.innerHTML="";
+        lastFetchedMeanings.forEach((m,i)=>{
+            const div=document.createElement("div"); div.style.marginBottom="6px";
+            div.innerHTML=`<strong>${i+1}.</strong> ${m}`; container.appendChild(div);
+        });
+        document.getElementById("save-word-btn").onclick = saveLastWord;
+        document.getElementById("popup").style.display="block";
+    }catch(e){alert("뜻을 가져오는 중 오류");}
+}
+function closePopup(){document.getElementById("popup").style.display="none";}
+async function saveLastWord(){
+    if(!lastFetchedWord) return;
+    try{
+        const res = await fetch("/add_word", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({word:lastFetchedWord, meanings:lastFetchedMeanings})
+        });
+        const data = await res.json();
+        if(data.success){alert("단어장에 저장되었습니다."); closePopup();}
+        else alert(data.error||"저장 실패");
+    }catch(e){alert("저장 중 오류");}
+}
+async function deleteWord(word){
+    if(!confirm(word+"을(를) 삭제할까요?")) return;
+    try{
+        const res = await fetch("/delete_word", {
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({word:word})
+        });
+        const data = await res.json();
+        if(data.success) location.reload();
+        else alert("삭제 실패");
+    }catch(e){alert("삭제 중 오류");}
+}
+</script>
 </body>
 </html>
