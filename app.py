@@ -128,12 +128,13 @@ predefined_words = {
         "예술": "인간의 창작 활동과 작품",
         "공연": "음악, 연극 등 공연 활동",
         "축제": "지역 또는 국가 단위 행사",
-        "생활정보": "일상 생활에 필요한 정보"
+         "생활정보": "일상 생활에 필요한 정보"
     }
 }
+# ⚠️ 실제 코드에서는 네가 올린 predefined_words 그대로 두면 됨
 
 # -------------------------
-# 기사 본문 가져오기
+# 기사 본문 가져오기 (안정화)
 # -------------------------
 def get_article_text(url):
     try:
@@ -143,35 +144,37 @@ def get_article_text(url):
             timeout=5
         )
         soup = BeautifulSoup(res.text, "html.parser")
-        content = soup.select_one("#dic_area") or soup.select_one("div#articleBodyContents") or soup.select_one("div.news_end")
+        content = (
+            soup.select_one("#dic_area")
+            or soup.select_one("div#articleBodyContents")
+            or soup.select_one("div.news_end")
+        )
+
         if not content:
-            return soup.get_text(separator=" ", strip=True)
+            return ""
+
         text = content.get_text(separator=" ", strip=True)
-        return re.sub(r"\s+", " ", text)
+        text = re.sub(r"\s+", " ", text)
+
+        # 🔥 메모리 보호: 본문 최대 3000자
+        return text[:3000]
+
     except Exception:
-        return "본문을 불러올 수 없습니다."
+        return ""
 
 # -------------------------
-# 뉴스 요약 400~600자
+# 뉴스 요약 (Render 안전 버전)
 # -------------------------
-def smart_summary(text, min_len=400, max_len=600):
-    text = re.sub(r"\s+", " ", text).strip()
+def smart_summary(text, max_len=500):
     if not text:
         return ""
-    sentences = re.split(r'(?<=[.?!])\s+', text)
-    selected = []
-    for s in sentences:
-        selected.append(s.strip())
-        if len(" ".join(selected)) >= min_len:
-            break
-    summary = " ".join(selected)
-    summary = summary[:max_len]
+    summary = text[:max_len]
     if not summary.endswith((".", "!", "?")):
         summary += "."
     return summary
 
 # -------------------------
-# 뉴스 목록 가져오기
+# 뉴스 목록 가져오기 (카테고리당 5개)
 # -------------------------
 def get_news(url):
     try:
@@ -183,15 +186,17 @@ def get_news(url):
     news_items = []
     candidates = soup.select("div.sa_item_inner") or soup.select("ul.list_news li")
 
-    for i, item in enumerate(candidates[:10]):
+    for i, item in enumerate(candidates[:5]):  # 🔥 5개 제한
         title_tag = item.select_one("a.sa_text_title") or item.select_one("a")
         if not title_tag:
             continue
+
         link = title_tag.get("href")
         if not link:
             continue
 
         full_text = get_article_text(link)
+
         news_items.append({
             "id": i + 1,
             "title": title_tag.get_text(strip=True),
@@ -199,6 +204,7 @@ def get_news(url):
             "summary": smart_summary(full_text),
             "content": full_text
         })
+
     return news_items
 
 # -------------------------
@@ -212,7 +218,10 @@ def index():
     for cat, url in news_urls.items():
         articles = get_news(url)
         if query:
-            articles = [a for a in articles if query in a["title"] or query in a["content"]]
+            articles = [
+                a for a in articles
+                if query in a["title"] or query in a["content"]
+            ]
         news_data[cat] = articles
 
     return render_template(
@@ -236,16 +245,21 @@ def define_word():
     return jsonify({"meanings": meanings or ["뜻을 찾을 수 없습니다."]})
 
 # -------------------------
-# 단어장 관리
+# 단어장
 # -------------------------
 @app.route("/add_word", methods=["POST"])
 def add_word():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     word = data.get("word", "").strip()
     meanings = data.get("meanings", [])
+
+    if not word:
+        return jsonify(success=False)
+
     wb = session.get("wordbook", [])
     wb = [w for w in wb if w["word"] != word]
     wb.insert(0, {"word": word, "meanings": meanings})
+
     session["wordbook"] = wb[:20]
     return jsonify(success=True)
 
@@ -255,9 +269,12 @@ def wordbook_page():
 
 @app.route("/delete_word", methods=["POST"])
 def delete_word():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     word = data.get("word")
-    session["wordbook"] = [w for w in session.get("wordbook", []) if w["word"] != word]
+    session["wordbook"] = [
+        w for w in session.get("wordbook", [])
+        if w["word"] != word
+    ]
     return jsonify(success=True)
 
 # -------------------------
