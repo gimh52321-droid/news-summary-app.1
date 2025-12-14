@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 import requests
 from bs4 import BeautifulSoup
 import re
+import os
 
 app = Flask(__name__)
 app.secret_key = "secret_key_example"
@@ -16,7 +17,7 @@ news_urls = {
 }
 
 # -------------------------
-# 주제별 단어 사전 (15~20개씩)
+# 주제별 단어 사전
 # -------------------------
 predefined_words = {
     "경제": {
@@ -136,14 +137,17 @@ predefined_words = {
 # -------------------------
 def get_article_text(url):
     try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        res = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=5
+        )
         soup = BeautifulSoup(res.text, "html.parser")
         content = soup.select_one("#dic_area") or soup.select_one("div#articleBodyContents") or soup.select_one("div.news_end")
         if not content:
             return soup.get_text(separator=" ", strip=True)
         text = content.get_text(separator=" ", strip=True)
-        text = re.sub(r"\s+", " ", text)
-        return text
+        return re.sub(r"\s+", " ", text)
     except Exception:
         return "본문을 불러올 수 없습니다."
 
@@ -160,126 +164,104 @@ def smart_summary(text, min_len=400, max_len=600):
         selected.append(s.strip())
         if len(" ".join(selected)) >= min_len:
             break
-    summary = " ".join(selected).strip()
-    if len(summary) < min_len:
-        summary = text[:max_len]
-    if len(summary) > max_len:
-        summary = summary[:max_len]
+    summary = " ".join(selected)
+    summary = summary[:max_len]
     if not summary.endswith((".", "!", "?")):
         summary += "."
     return summary
 
 # -------------------------
-# 뉴스 목록 가져오기 (카테고리별 최대 10개)
+# 뉴스 목록 가져오기
 # -------------------------
 def get_news(url):
     try:
-        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
         soup = BeautifulSoup(res.text, "html.parser")
     except Exception:
         return []
 
     news_items = []
-    candidates = soup.select("div.sa_item_inner") or soup.select("ul.list_news li") or soup.select("a.link")
-    count = 0
-    for item in candidates:
-        if count >= 10:
-            break
-        title_tag = item.select_one("a.sa_text_title") or item.select_one("a.link") or item.select_one("a")
+    candidates = soup.select("div.sa_item_inner") or soup.select("ul.list_news li")
+
+    for i, item in enumerate(candidates[:10]):
+        title_tag = item.select_one("a.sa_text_title") or item.select_one("a")
         if not title_tag:
             continue
-        title = title_tag.get_text(strip=True)
         link = title_tag.get("href")
         if not link:
             continue
+
         full_text = get_article_text(link)
-        summary = smart_summary(full_text)
         news_items.append({
-            "id": count + 1,
-            "title": title,
+            "id": i + 1,
+            "title": title_tag.get_text(strip=True),
             "link": link,
-            "summary": summary,
+            "summary": smart_summary(full_text),
             "content": full_text
         })
-        count += 1
     return news_items
 
 # -------------------------
 # 메인 페이지
 # -------------------------
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
     query = request.args.get("query", "").strip()
     news_data = {}
+
     for cat, url in news_urls.items():
         articles = get_news(url)
         if query:
             articles = [a for a in articles if query in a["title"] or query in a["content"]]
         news_data[cat] = articles
-    favorites = session.get("favorites", [])
-    wordbook = session.get("wordbook", [])
-    return render_template("index.html", news_data=news_data, favorites=favorites, wordbook=wordbook, query=query)
+
+    return render_template(
+        "index.html",
+        news_data=news_data,
+        favorites=session.get("favorites", []),
+        wordbook=session.get("wordbook", []),
+        query=query
+    )
 
 # -------------------------
-# 단어 뜻 조회 (주제별 사전 사용)
+# 단어 뜻 조회
 # -------------------------
 @app.route("/api/define")
 def define_word():
     word = request.args.get("word", "").strip()
-    if not word:
-        return jsonify({"meanings": ["단어가 없습니다."]})
-    
     meanings = []
-    for cat_words in predefined_words.values():
-        if word in cat_words:
-            meanings.append(cat_words[word])
-    
-    if not meanings:
-        meanings = ["뜻을 찾을 수 없습니다."]
-    
-    return jsonify({"meanings": meanings})
+    for words in predefined_words.values():
+        if word in words:
+            meanings.append(words[word])
+    return jsonify({"meanings": meanings or ["뜻을 찾을 수 없습니다."]})
 
 # -------------------------
-# 단어장 추가
+# 단어장 관리
 # -------------------------
 @app.route("/add_word", methods=["POST"])
 def add_word():
-    data = request.get_json(silent=True) or {}
-    word = (data.get("word") or "").strip()
-    meanings = data.get("meanings") or []
-    if not word:
-        return jsonify({"error": "단어가 없습니다."}), 400
+    data = request.get_json() or {}
+    word = data.get("word", "").strip()
+    meanings = data.get("meanings", [])
     wb = session.get("wordbook", [])
-    wb = [w for w in wb if w.get("word") != word]
+    wb = [w for w in wb if w["word"] != word]
     wb.insert(0, {"word": word, "meanings": meanings})
-    wb = wb[:20]
-    session["wordbook"] = wb
-    return jsonify({"success": True, "wordbook": wb})
+    session["wordbook"] = wb[:20]
+    return jsonify(success=True)
 
-# -------------------------
-# 단어장 페이지
-# -------------------------
 @app.route("/wordbook")
 def wordbook_page():
-    wordbook = session.get("wordbook", [])
-    return render_template("wordbook.html", wordbook=wordbook)
+    return render_template("wordbook.html", wordbook=session.get("wordbook", []))
 
-# -------------------------
-# 단어 삭제
-# -------------------------
 @app.route("/delete_word", methods=["POST"])
 def delete_word():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json() or {}
     word = data.get("word")
-    if not word:
-        return jsonify({"error": "단어가 없습니다."}), 400
-    wb = session.get("wordbook", [])
-    wb = [w for w in wb if w.get("word") != word]
-    session["wordbook"] = wb
-    return jsonify({"success": True, "wordbook": wb})
+    session["wordbook"] = [w for w in session.get("wordbook", []) if w["word"] != word]
+    return jsonify(success=True)
 
 # -------------------------
-# 즐겨찾기 추가/삭제
+# 즐겨찾기
 # -------------------------
 @app.route("/favorite/<path:title>")
 def add_favorite(title):
@@ -299,11 +281,11 @@ def remove_favorite(title):
 
 @app.route("/favorites")
 def show_favorites():
-    favorites = session.get("favorites", [])
-    return render_template("favorites.html", favorites=favorites)
+    return render_template("favorites.html", favorites=session.get("favorites", []))
 
 # -------------------------
-# 실행
+# 실행 (Render 대응)
 # -------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
