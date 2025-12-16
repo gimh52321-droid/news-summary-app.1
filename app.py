@@ -174,7 +174,7 @@ def smart_summary(text, max_len=500):
     return summary
 
 # -------------------------
-# 뉴스 목록 가져오기 (카테고리당 5개)
+# 뉴스 목록 가져오기 (카테고리당 10개)
 # -------------------------
 def get_news(url):
     try:
@@ -186,7 +186,7 @@ def get_news(url):
     news_items = []
     candidates = soup.select("div.sa_item_inner") or soup.select("ul.list_news li")
 
-    for i, item in enumerate(candidates[:5]):  # 🔥 5개 제한
+    for i, item in enumerate(candidates[:10]):  # 🔥 10개 제한
         title_tag = item.select_one("a.sa_text_title") or item.select_one("a")
         if not title_tag:
             continue
